@@ -12,9 +12,11 @@ import Eureka
  *  Struct holding the value for a CreditCardRow
  */
 public struct CreditCardInfo : Equatable {
-    var creditCardNumber : String?
-    var expiration : String?
-    var cvv : String?
+    public var creditCardNumber : String?
+    public var expiration : String?
+    public var cvv : String?
+    
+    public init() { }
 }
 
 public func ==(lhs: CreditCardInfo, rhs: CreditCardInfo) -> Bool {
@@ -70,7 +72,6 @@ open class CreditCardCell: Cell<CreditCardInfo>, UITextFieldDelegate, CellType {
             field?.addTarget(self, action: #selector(CreditCardCell.textFieldEditingChanged(_:)), for: .editingChanged)
             field?.delegate = self
         }
-
         cvvField?.isSecureTextEntry = true
     }
 
@@ -218,11 +219,18 @@ open class CreditCardCell: Cell<CreditCardInfo>, UITextFieldDelegate, CellType {
         // explicitly reposition it after we inject spaces into the text.
         // targetCursorPosition keeps track of where the cursor needs to end up as
         // we modify the string, and at the end we set the cursor position to it.
-        guard let selectedRange = textField.selectedTextRange, let textString = textField.text else { return }
-        var targetCursorPosition = textField.offset(from: textField.beginningOfDocument, to: selectedRange.start)
-
-        let cardNumberWithoutSpaces = removeNonDigits(textString, cursorPosition: &targetCursorPosition)
-
+        guard let textString = textField.text else { return }
+        
+        var targetCursorPosition = 0
+        var cardNumberWithoutSpaces = ""
+        
+        if let selectedRange = textField.selectedTextRange {
+            targetCursorPosition = textField.offset(from: textField.beginningOfDocument, to: selectedRange.start)
+            cardNumberWithoutSpaces = removeNonDigits(textString, cursorPosition: &targetCursorPosition)
+        }else{ // Case when setting value 
+            targetCursorPosition = textString.characters.count
+            cardNumberWithoutSpaces = textString
+        }
         if cardNumberWithoutSpaces.characters.count > ccrow.maxCreditCardNumberLength {
             // If the user is trying to enter more than maxCreditCardNumberLength digits, we prevent
             // their change, leaving the text field in its previous state.
@@ -230,9 +238,9 @@ open class CreditCardCell: Cell<CreditCardInfo>, UITextFieldDelegate, CellType {
             textField.selectedTextRange = previousSelection
             return
         }
-
+        
         let cardNumberWithSpaces = insertSpacesEveryFourDigits(cardNumberWithoutSpaces, cursorPosition: &targetCursorPosition)
-
+        
         // update text and cursor appropiately
         textField.text = cardNumberWithSpaces
         if let targetPosition = textField.position(from: textField.beginningOfDocument, offset: targetCursorPosition) {
@@ -293,14 +301,19 @@ open class CreditCardCell: Cell<CreditCardInfo>, UITextFieldDelegate, CellType {
     open func reformatAsExpiration(_ textField: UITextField) {
         guard let string = textField.text else { return }
         let expirationString = String(ccrow.expirationSeparator)
-        let cleanString = string.replacingOccurrences(of: expirationString, with: "", options: .literal, range: nil)
+        
+        guard let selectedRange = textField.selectedTextRange, let textString = textField.text else { return }
+        var targetCursorPosition = textField.offset(from: textField.beginningOfDocument, to: selectedRange.start)
+        var cleanString = removeNonDigits(textString, cursorPosition: &targetCursorPosition)
+//
+        cleanString = cleanString.replacingOccurrences(of: expirationString, with: "", options: .literal, range: nil)
         if cleanString.length >= 3 {
-            let monthString = cleanString[Range(0...1)]
+            let monthString = cleanString[Range(uncheckedBounds: (lower: 0, upper: 2))]
             var yearString: String
             if cleanString.length == 3 {
                 yearString = cleanString[2]
             } else {
-                yearString = cleanString[Range(2...3)]
+                yearString = cleanString[Range(uncheckedBounds: (lower: 2, upper: 4))]
             }
             textField.text = monthString + expirationString + yearString
         } else {
@@ -310,9 +323,15 @@ open class CreditCardCell: Cell<CreditCardInfo>, UITextFieldDelegate, CellType {
 
     //MARK: CVV formatting
     open func reformatAsCVV(_ textField: UITextField) {
-        guard let string = textField.text else { return }
-        if string.characters.count > ccrow.maxCVVLength {
-            textField.text = string[0..<ccrow.maxCVVLength]
+        
+        guard let selectedRange = textField.selectedTextRange, let textString = textField.text else { return }
+        var targetCursorPosition = textField.offset(from: textField.beginningOfDocument, to: selectedRange.start)
+        var cleanString = removeNonDigits(textString, cursorPosition: &targetCursorPosition)
+        
+        if cleanString.characters.count > ccrow.maxCVVLength {
+            textField.text = cleanString[0..<ccrow.maxCVVLength]
+        }else {
+            textField.text = cleanString
         }
     }
 }
