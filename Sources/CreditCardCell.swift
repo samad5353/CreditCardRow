@@ -95,7 +95,7 @@ open class CreditCardCell: Cell<CreditCardInfo>, UITextFieldDelegate, CellType {
         if let expirationField = expirationField {
             expirationField.text = row.value?.expiration
             reformatAsExpiration(expirationField)
-            expirationField.placeholder = NSLocalizedString("MM\(ccrow.expirationSeparator)YY", comment: "Card Expiration placeholder")
+            expirationField.placeholder = NSLocalizedString("Exp Date", comment: "Card Expiration placeholder")
         }
     }
     
